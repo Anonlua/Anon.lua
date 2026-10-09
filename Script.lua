@@ -44,7 +44,6 @@ local ok, err = pcall(function()
         fov_frame = nil,
         fly_bv = nil,
         original_sizes = {},
-        hook_installed = false,
     }
 
     local CONFIG = {
@@ -97,6 +96,7 @@ local ok, err = pcall(function()
         return c and c:FindFirstChild("HumanoidRootPart")
     end
 
+    -- ============ УВЕДОМЛЕНИЯ ============
     local notif_holder = Instance.new("Frame")
     notif_holder.Size = UDim2.new(0, 220, 0, 300)
     notif_holder.Position = UDim2.new(1, -236, 0, 80)
@@ -202,6 +202,7 @@ local ok, err = pcall(function()
         end)
     end
 
+    -- ============ MM2 EVENTS ============
     local function get_remote(path)
         local cur = ReplicatedStorage
         for p in path:gmatch("[^%.]+") do
@@ -245,6 +246,7 @@ local ok, err = pcall(function()
         end
     end)) end
 
+    -- ============ ХИТБОКС ============
     local function apply_hitbox_temp()
         local touched = {}
         for _, plr in ipairs(Players:GetPlayers()) do
@@ -285,6 +287,7 @@ local ok, err = pcall(function()
         end
     end
 
+    -- ============ SILENT AIM / WALLBANG ============
     if type(hookmetamethod) == "function" and type(getnamecallmethod) == "function" then
         local ok_hook, err_hook = pcall(function()
             local old_namecall
@@ -349,10 +352,9 @@ local ok, err = pcall(function()
                 end
                 return old_namecall(self, ...)
             end))
-            State.hook_installed = true
         end)
         if ok_hook then
-            print("[MM2] silent aim hook installed via hookmetamethod")
+            print("[MM2] silent aim hook installed")
         else
             warn("[MM2] hook failed:", tostring(err_hook))
         end
@@ -360,6 +362,7 @@ local ok, err = pcall(function()
         warn("[MM2] hookmetamethod unavailable")
     end
 
+    -- ============ ANTI-AIM ============
     local aa_angle = 0
     track(RunService.RenderStepped:Connect(function(dt)
         if not CONFIG.anti_aim then return end
@@ -374,10 +377,11 @@ local ok, err = pcall(function()
         end
     end))
 
-    local function get_closest_in_fov()
+    -- ============ AIMBOT ============
+    local function get_closest_in_fov(fov)
         local my_root = get_root()
         if not my_root then return nil end
-        local best, best_d = nil, CONFIG.aimbot_fov
+        local best, best_d = nil, fov
         for _, plr in ipairs(Players:GetPlayers()) do
             if plr ~= LocalPlayer and plr.Character then
                 local root = plr.Character:FindFirstChild("HumanoidRootPart")
@@ -397,7 +401,7 @@ local ok, err = pcall(function()
 
     track(RunService.RenderStepped:Connect(function()
         if CONFIG.aimbot then
-            local target = get_closest_in_fov()
+            local target = get_closest_in_fov(CONFIG.aimbot_fov)
             if target then
                 pcall(function()
                     Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
@@ -422,20 +426,27 @@ local ok, err = pcall(function()
         end
     end))
 
-    local RoleCache = {}
+    -- ============ ESP ============
     local function detect_role(plr)
         local char = plr.Character
-        if not char then return nil end
-        local function scan(container)
-            if not container then return nil end
-            for _, it in ipairs(container:GetChildren()) do
-                local n = tostring(it.Name):lower()
-                if n:find("knife") and not n:find("throw") then return "Murderer" end
-                if n:find("gun") or n:find("revolver") then return "Sheriff" end
+        if not char then return "Innocent" end
+        local containers = { char, plr:FindFirstChildOfClass("Backpack") }
+        for _, cont in ipairs(containers) do
+            if cont then
+                for _, it in ipairs(cont:GetChildren()) do
+                    if it:IsA("Tool") then
+                        local n = tostring(it.Name):lower()
+                        if n == "knife" or (n:find("knife") and not n:find("throw") and not n:find("display")) then
+                            return "Murderer"
+                        end
+                        if n == "gun" or n == "revolver" or (n:find("gun") and not n:find("display")) then
+                            return "Sheriff"
+                        end
+                    end
+                end
             end
-            return nil
         end
-        return scan(char) or scan(plr:FindFirstChildOfClass("Backpack")) or "Innocent"
+        return "Innocent"
     end
 
     local function clear_esp()
@@ -459,8 +470,7 @@ local ok, err = pcall(function()
                         local root = plr.Character:FindFirstChild("HumanoidRootPart")
                         local hum = plr.Character:FindFirstChildOfClass("Humanoid")
                         if root and hum and hum.Health > 0 then
-                            local role = RoleCache[plr] or detect_role(plr)
-                            RoleCache[plr] = role
+                            local role = detect_role(plr)
                             local color = C.innocent
                             if CONFIG.role_esp and role then
                                 if role == "Murderer" then color = C.murderer
@@ -506,8 +516,7 @@ local ok, err = pcall(function()
         end
     end)
 
-    if RoundStart then track(RoundStart.OnClientEvent:Connect(function() RoleCache = {} end)) end
-
+    -- ============ GOD MODE ============
     task.spawn(function()
         while State.running do
             task.wait(0.2)
@@ -518,6 +527,7 @@ local ok, err = pcall(function()
         end
     end)
 
+    -- ============ SPEED ============
     task.spawn(function()
         while State.running do
             task.wait(0.2)
@@ -531,6 +541,7 @@ local ok, err = pcall(function()
         end
     end)
 
+    -- ============ NOCLIP ============
     track(RunService.Stepped:Connect(function()
         if not CONFIG.no_clip then return end
         local c = get_char()
@@ -543,6 +554,7 @@ local ok, err = pcall(function()
         end
     end))
 
+    -- ============ FLY ============
     track(RunService.RenderStepped:Connect(function()
         if not CONFIG.fly then
             if State.fly_bv then pcall(function() State.fly_bv:Destroy() end); State.fly_bv = nil end
@@ -570,6 +582,7 @@ local ok, err = pcall(function()
         State.fly_bv.Velocity = move
     end))
 
+    -- ============ WORLD ============
     local orig_light = {
         ambient = Lighting.Ambient, brightness = Lighting.Brightness,
         outdoor = Lighting.OutdoorAmbient, fog_end = Lighting.FogEnd, clock = Lighting.ClockTime,
@@ -610,6 +623,7 @@ local ok, err = pcall(function()
         end
     end)
 
+    -- ============ UI ============
     local WIN_W, WIN_H = 380, 250
     local main = Instance.new("Frame")
     main.Size = UDim2.new(0, WIN_W, 0, WIN_H)
