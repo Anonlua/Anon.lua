@@ -1,5 +1,5 @@
 -- env: Roblox, executor: Delta, target: Steal an Egg
--- kitafa hub: Anti Guard + премиум UI
+-- kitafa hub: Anti Guard (фикс чёрной тени)
 
 print("[LM] start")
 
@@ -29,7 +29,22 @@ sg.DisplayOrder = 999
 sg.Parent = PG
 
 -- ═══════════════════════════════════════════
--- ГЛАВНАЯ ПАНЕЛЬ (стеклянный эффект)
+-- ТЕНЬ (скрыта до первого кадра)
+-- ═══════════════════════════════════════════
+local shadow = Instance.new("Frame")
+shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+shadow.BackgroundTransparency = 0.5
+shadow.BorderSizePixel = 0
+shadow.Visible = false       -- СКРЫТА сначала
+shadow.ZIndex = 0
+shadow.Parent = sg
+
+local shc = Instance.new("UICorner")
+shc.CornerRadius = UDim.new(0, 20)
+shc.Parent = shadow
+
+-- ═══════════════════════════════════════════
+-- ГЛАВНАЯ ПАНЕЛЬ
 -- ═══════════════════════════════════════════
 local panel = Instance.new("Frame")
 panel.Size = UDim2.new(0, 260, 0, 78)
@@ -45,7 +60,6 @@ local pc = Instance.new("UICorner")
 pc.CornerRadius = UDim.new(0, 18)
 pc.Parent = panel
 
--- Градиент фона (тёмно-фиолетовый сверху вниз)
 local bgGrad = Instance.new("UIGradient")
 bgGrad.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 20, 50)),
@@ -55,35 +69,33 @@ bgGrad.Color = ColorSequence.new({
 bgGrad.Rotation = 90
 bgGrad.Parent = panel
 
--- Внешняя RGB-обводка
 local rgbStroke = Instance.new("UIStroke")
 rgbStroke.Color = Color3.fromRGB(160, 100, 255)
 rgbStroke.Thickness = 2.5
 rgbStroke.Transparency = 0.1
 rgbStroke.Parent = panel
 
--- Внутренняя светлая обводка
 local innerStroke = Instance.new("UIStroke")
 innerStroke.Color = Color3.fromRGB(255, 255, 255)
 innerStroke.Thickness = 1
 innerStroke.Transparency = 0.85
 innerStroke.Parent = panel
 
--- Тень под панелью
-local shadow = Instance.new("Frame")
-shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-shadow.BackgroundTransparency = 0.5
-shadow.BorderSizePixel = 0
-shadow.ZIndex = 0
-shadow.Parent = sg
-
-local shc = Instance.new("UICorner")
-shc.CornerRadius = UDim.new(0, 20)
-shc.Parent = shadow
+-- Тень следует за панелью (только после первого кадра)
+local shadowReady = false
+task.spawn(function()
+    task.wait(0.1)
+    shadowReady = true
+    shadow.Visible = true
+end)
 
 RUN.RenderStepped:Connect(function()
+    if not shadowReady then return end
+    if not panel or not panel.Parent then return end
+    
     local pos = panel.AbsolutePosition
     local size = panel.AbsoluteSize
+    
     shadow.Position = UDim2.new(0, pos.X - 5, 0, pos.Y + 10)
     shadow.Size = UDim2.new(0, size.X + 10, 0, size.Y + 10)
 end)
@@ -108,7 +120,7 @@ local function stopRGB()
 end
 
 -- ═══════════════════════════════════════════
--- ИКОНКА (луна в градиентном квадрате с glow)
+-- ИКОНКА ЛУНЫ
 -- ═══════════════════════════════════════════
 local iconBox = Instance.new("Frame")
 iconBox.Size = UDim2.new(0, 58, 0, 58)
@@ -121,7 +133,6 @@ local ibc = Instance.new("UICorner")
 ibc.CornerRadius = UDim.new(0, 14)
 ibc.Parent = iconBox
 
--- Градиент внутри иконки
 local iconGrad = Instance.new("UIGradient")
 iconGrad.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(60, 35, 100)),
@@ -130,21 +141,18 @@ iconGrad.Color = ColorSequence.new({
 iconGrad.Rotation = 135
 iconGrad.Parent = iconBox
 
--- Обводка иконки
 local ibStroke = Instance.new("UIStroke")
 ibStroke.Color = Color3.fromRGB(180, 120, 255)
 ibStroke.Thickness = 2
 ibStroke.Transparency = 0.1
 ibStroke.Parent = iconBox
 
--- Внутренняя тень иконки
 local ibInner = Instance.new("UIStroke")
 ibInner.Color = Color3.fromRGB(255, 255, 255)
 ibInner.Thickness = 1
 ibInner.Transparency = 0.85
 ibInner.Parent = iconBox
 
--- Луна
 local moonFull = Instance.new("Frame")
 moonFull.Size = UDim2.new(0, 40, 0, 40)
 moonFull.Position = UDim2.new(0.5, -20, 0.5, -20)
@@ -156,7 +164,6 @@ local mfc = Instance.new("UICorner")
 mfc.CornerRadius = UDim.new(1, 0)
 mfc.Parent = moonFull
 
--- Свечение вокруг луны (двойное)
 local moonGlowOuter = Instance.new("UIStroke")
 moonGlowOuter.Color = Color3.fromRGB(220, 180, 255)
 moonGlowOuter.Thickness = 4
@@ -169,7 +176,6 @@ moonGlowInner.Thickness = 1.5
 moonGlowInner.Transparency = 0.4
 moonGlowInner.Parent = moonFull
 
--- Тень внутри луны (делает серп)
 local moonShadow = Instance.new("Frame")
 moonShadow.Size = UDim2.new(0, 32, 0, 32)
 moonShadow.Position = UDim2.new(0.5, -10, 0.5, -22)
@@ -181,7 +187,6 @@ local msc = Instance.new("UICorner")
 msc.CornerRadius = UDim.new(1, 0)
 msc.Parent = moonShadow
 
--- Пульсация луны
 task.spawn(function()
     while true do
         task.wait(0.05)
@@ -192,7 +197,7 @@ task.spawn(function()
 end)
 
 -- ═══════════════════════════════════════════
--- ТЕКСТ (с обводкой и glow)
+-- ТЕКСТ
 -- ═══════════════════════════════════════════
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -160, 0, 22)
@@ -214,7 +219,6 @@ titleGrad.Color = ColorSequence.new({
 })
 titleGrad.Parent = title
 
--- Подзаголовок
 local sub = Instance.new("TextLabel")
 sub.Size = UDim2.new(1, -160, 0, 20)
 sub.Position = UDim2.new(0, 78, 0, 38)
@@ -229,7 +233,7 @@ sub.Text = "Anti Guard"
 sub.Parent = panel
 
 -- ═══════════════════════════════════════════
--- СТАТУС-ИНДИКАТОР (с glow)
+-- СТАТУС
 -- ═══════════════════════════════════════════
 local dot = Instance.new("Frame")
 dot.Size = UDim2.new(0, 9, 0, 9)
@@ -271,7 +275,7 @@ statusLbl.Text = "Active"
 statusLbl.Parent = panel
 
 -- ═══════════════════════════════════════════
--- ТУМБЛЕР (премиум)
+-- ТУМБЛЕР
 -- ═══════════════════════════════════════════
 local tgl = Instance.new("TextButton")
 tgl.Size = UDim2.new(0, 58, 0, 32)
@@ -286,7 +290,6 @@ local tc = Instance.new("UICorner")
 tc.CornerRadius = UDim.new(1, 0)
 tc.Parent = tgl
 
--- Градиент тумблера
 local tglGrad = Instance.new("UIGradient")
 tglGrad.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 100, 255)),
@@ -295,7 +298,6 @@ tglGrad.Color = ColorSequence.new({
 tglGrad.Rotation = 90
 tglGrad.Parent = tgl
 
--- Двойная обводка тумблера
 local tglGlow = Instance.new("UIStroke")
 tglGlow.Color = Color3.fromRGB(220, 180, 255)
 tglGlow.Thickness = 2
@@ -308,7 +310,6 @@ tglInner.Thickness = 1
 tglInner.Transparency = 0.85
 tglInner.Parent = tgl
 
--- Кружок
 local knob = Instance.new("Frame")
 knob.Size = UDim2.new(0, 26, 0, 26)
 knob.Position = UDim2.new(1, -28, 0.5, -13)
@@ -320,7 +321,6 @@ local kc = Instance.new("UICorner")
 kc.CornerRadius = UDim.new(1, 0)
 kc.Parent = knob
 
--- Градиент кружка
 local knobGrad = Instance.new("UIGradient")
 knobGrad.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
@@ -329,33 +329,11 @@ knobGrad.Color = ColorSequence.new({
 knobGrad.Rotation = 90
 knobGrad.Parent = knob
 
--- Тень кружка
 local knobShadow = Instance.new("UIStroke")
 knobShadow.Color = Color3.fromRGB(0, 0, 0)
 knobShadow.Thickness = 1.5
 knobShadow.Transparency = 0.6
 knobShadow.Parent = knob
-
--- Свечение кружка
-local knobGlow = Instance.new("UIStroke")
-knobGlow.Color = Color3.fromRGB(255, 255, 255)
-knobGlow.Thickness = 1
-knobGlow.Transparency = 0.5
-knobGlow.Parent = knob
-
--- Анимация нажатия (сжатие)
-local function pulseBtn(btn)
-    local origSize = btn.Size
-    local smallSize = UDim2.new(0, origSize.X.Offset - 4, 0, origSize.Y.Offset - 4)
-    local origPos = btn.Position
-    local newPos = UDim2.new(
-        origPos.X.Scale, origPos.X.Offset + 2,
-        origPos.Y.Scale, origPos.Y.Offset + 2
-    )
-    TS:Create(btn, TweenInfo.new(0.08), {Size = smallSize, Position = newPos}):Play()
-    task.wait(0.08)
-    TS:Create(btn, TweenInfo.new(0.12, Enum.EasingStyle.Back), {Size = origSize, Position = origPos}):Play()
-end
 
 local function upd()
     if ON then
@@ -394,7 +372,6 @@ local function upd()
 end
 
 tgl.MouseButton1Click:Connect(function()
-    pulseBtn(tgl)
     ON = not ON
     upd()
     print("[LM] режим:", ON and "ON" or "OFF")
@@ -472,4 +449,4 @@ if shiftEv then
     print("[LM] ✅ FieldEggShifted")
 end
 
-print("[LM] готово. Премиум UI + Anti Guard.")
+print("[LM] готово")
